@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Checador de Fatos</title>
+<style>
+  :root {
+    --bg: #07080b;
+    --bg-glow: #101a33;
+    --panel: #0f1116;
+    --panel-2: #151821;
+    --border: rgba(255,255,255,.08);
+    --border-strong: rgba(255,255,255,.14);
+    --text: #eef0f4;
+    --muted: #9aa3b2;
+    --faint: #5e6675;
+    --accent: #4d7cff;
+    --accent-soft: rgba(77,124,255,.15);
+    --accent-glow: rgba(77,124,255,.4);
+    --true: #36d399;
+    --false: #f76d6d;
+    --unknown: #fbbf24;
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; color: var(--text);
+    background:
+      radial-gradient(900px 460px at 50% -200px, var(--bg-glow), transparent 72%),
+      var(--bg);
+    background-attachment: fixed;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, sans-serif;
+    line-height: 1.6; -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 660px; margin: 0 auto; padding: 64px 20px 110px; }
+
+  /* Header */
+  header { text-align: center; margin-bottom: 30px; }
+  .logo {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 56px; height: 56px; border-radius: 16px; margin-bottom: 16px;
+    background: linear-gradient(145deg, #4d7cff, #2a52d8);
+    box-shadow: 0 14px 34px -12px var(--accent-glow);
+    font-size: 28px;
+  }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -.025em; margin: 0 0 8px; }
+  .tagline { color: var(--muted); font-size: 16px; margin: 0; }
+
+  /* Input card */
+  .card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 22px;
+    box-shadow: 0 20px 50px -34px rgba(0,0,0,.95);
+  }
+  textarea {
+    width: 100%; min-height: 84px; resize: vertical;
+    background: var(--panel-2); color: var(--text);
+    border: 1px solid var(--border); border-radius: 13px;
+    padding: 15px 17px; font-size: 16px; font-family: inherit;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  textarea::placeholder { color: var(--faint); }
+  textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+
+  .row { display: flex; gap: 14px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
+  button#btn {
+    background: var(--accent); color: #fff; border: none; border-radius: 12px;
+    padding: 13px 30px; font-size: 15.5px; font-weight: 600; cursor: pointer;
+    box-shadow: 0 10px 24px -10px var(--accent-glow);
+    transition: transform .12s, box-shadow .18s, opacity .18s;
+  }
+  button#btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 14px 30px -10px var(--accent-glow); }
+  button#btn:active:not(:disabled) { transform: translateY(0); }
+  button#btn:disabled { opacity: .55; cursor: not-allowed; }
+
+  .status { font-size: 14px; color: var(--muted); }
+  .err { color: var(--false); }
+  .spinner {
+    display: inline-block; width: 15px; height: 15px;
+    border: 2px solid var(--border-strong); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .7s linear infinite; vertical-align: -2px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .examples-label { font-size: 13px; color: var(--faint); margin: 20px 0 10px; }
+  .chips { display: flex; gap: 9px; flex-wrap: wrap; }
+  .chip {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--muted);
+    border-radius: 999px; padding: 8px 14px; font-size: 13px; cursor: pointer;
+    transition: color .15s, border-color .15s, background .15s;
+  }
+  .chip:hover { color: var(--text); border-color: var(--border-strong); background: #1a1e28; }
+  .hint { font-size: 12.5px; color: var(--faint); margin: 16px 0 0; text-align: center; }
+  kbd { background: var(--panel-2); border: 1px solid var(--border); border-bottom-width: 2px;
+        border-radius: 6px; padding: 1px 7px; font-size: 12px; font-family: ui-monospace, monospace; }
+
+  /* Result */
+  #result { margin-top: 22px; }
+  #result > * { animation: fade .4s ease both; }
+  @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+  .verdict {
+    border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 34px 26px 26px; text-align: center; background: var(--panel);
+  }
+  .verdict.v-true   { border-color: rgba(54,211,153,.35); box-shadow: 0 0 60px -28px rgba(54,211,153,.6); }
+  .verdict.v-false  { border-color: rgba(247,109,109,.35); box-shadow: 0 0 60px -28px rgba(247,109,109,.6); }
+  .verdict.v-unknown{ border-color: rgba(251,191,36,.35); box-shadow: 0 0 60px -28px rgba(251,191,36,.55); }
+
+  .v-icon {
+    width: 72px; height: 72px; margin: 0 auto 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 38px; font-weight: 700; line-height: 1;
+  }
+  .v-true   .v-icon { background: rgba(54,211,153,.14); color: var(--true); }
+  .v-false  .v-icon { background: rgba(247,109,109,.14); color: var(--false); }
+  .v-unknown .v-icon { background: rgba(251,191,36,.14); color: var(--unknown); }
+
+  .v-word { font-size: 27px; font-weight: 750; letter-spacing: -.02em; }
+  .v-true   .v-word { color: var(--true); }
+  .v-false  .v-word { color: var(--false); }
+  .v-unknown .v-word { color: var(--unknown); }
+
+  .v-claim { font-size: 15px; color: var(--text); margin: 14px auto 0; max-width: 480px; font-style: italic; }
+  .v-explain { font-size: 14.5px; color: var(--muted); margin: 10px auto 0; max-width: 480px; }
+
+  .certainty { max-width: 320px; margin: 22px auto 0; }
+  .certainty-label { font-size: 12.5px; color: var(--faint); margin-bottom: 8px; }
+  .bar { height: 8px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .fill { height: 100%; width: 0; border-radius: 999px; transition: width .8s cubic-bezier(.2,.7,.2,1); }
+  .v-true   .fill { background: linear-gradient(90deg,#2bbd86,var(--true)); }
+  .v-false  .fill { background: linear-gradient(90deg,#e25555,var(--false)); }
+  .v-unknown .fill { background: linear-gradient(90deg,#e0a818,var(--unknown)); }
+
+  details.more { margin-top: 24px; text-align: left; border-top: 1px solid var(--border); padding-top: 18px; }
+  details.more summary {
+    cursor: pointer; color: var(--accent); font-size: 13.5px; font-weight: 500;
+    list-style: none; display: inline-flex; align-items: center; gap: 6px; user-select: none;
+  }
+  details.more summary::-webkit-details-marker { display: none; }
+  details.more summary::before { content: "▸"; font-size: 11px; transition: transform .2s; }
+  details.more[open] summary::before { transform: rotate(90deg); }
+
+  .points-title { font-size: 12.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 18px 0 12px; }
+  .point { padding: 12px 0; border-top: 1px solid var(--border); }
+  .point:first-of-type { border-top: none; }
+  .point-head { display: flex; align-items: center; gap: 9px; }
+  .pdot { width: 9px; height: 9px; border-radius: 50%; flex: 0 0 auto; }
+  .pdot.v-true { background: var(--true); } .pdot.v-false { background: var(--false); } .pdot.v-unknown { background: var(--unknown); }
+  .point-text { font-size: 14px; }
+  .point-tag { font-size: 11px; font-weight: 700; margin-left: auto; }
+  .point-tag.v-true { color: var(--true); } .point-tag.v-false { color: var(--false); } .point-tag.v-unknown { color: var(--unknown); }
+  .point-why { font-size: 13px; color: var(--muted); margin: 6px 0 0 18px; }
+
+  .sources-title { font-size: 12.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin: 20px 0 10px; }
+  .source-link { display: block; font-size: 13px; color: var(--accent); text-decoration: none; padding: 4px 0; word-break: break-word; }
+  .source-link:hover { text-decoration: underline; }
+  .source-link span { color: var(--faint); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">🔎</div>
+    <h1>Checador de Fatos</h1>
+    <p class="tagline">Escreva uma afirmação e descubra se ela é verdadeira ou falsa.</p>
+  </header>
+
+  <div class="card">
+    <textarea id="claim" placeholder="Ex.: A Terra leva 365 dias para dar uma volta no Sol."></textarea>
+    <div class="row">
+      <button id="btn" onclick="verificar()">Verificar</button>
+      <span id="status" class="status"></span>
+    </div>
+    <p class="examples-label">Não sabe por onde começar? Toque em um exemplo:</p>
+    <div class="chips" id="chips"></div>
+    <p class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> também envia.</p>
+  </div>
+
+  <div id="result"></div>
+</div>
+
+<script>
+const EXEMPLOS = [
+  "A Terra leva aproximadamente 365 dias para orbitar o Sol.",
+  "Marte é o maior planeta do Sistema Solar.",
+  "A água ferve a 100 graus Celsius ao nível do mar.",
+];
+
+const VERDICT = {
+  SUPPORTS: {
+    word: "Verdadeiro", icon: "✓", cls: "v-true", tag: "Verdadeiro",
+    line: "Com base nas informações encontradas, esta afirmação é verdadeira."
+  },
+  REFUTES: {
+    word: "Falso", icon: "✕", cls: "v-false", tag: "Falso",
+    line: "Com base nas informações encontradas, esta afirmação é falsa."
+  },
+  NOT_ENOUGH_INFO: {
+    word: "Inconclusivo", icon: "?", cls: "v-unknown", tag: "Inconclusivo",
+    line: "Não encontramos informações suficientes para confirmar ou negar esta afirmação."
+  },
+};
+function vinfo(label) { return VERDICT[label] || VERDICT.NOT_ENOUGH_INFO; }
+
+const chips = document.getElementById('chips');
+EXEMPLOS.forEach(ex => {
+  const c = document.createElement('span');
+  c.className = 'chip'; c.textContent = ex;
+  c.onclick = () => { document.getElementById('claim').value = ex; };
+  chips.appendChild(c);
+});
+
+document.getElementById('claim').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') verificar();
+});
+
+function esc(s) {
+  return (s ?? '').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function plain(s) {
+  return (s ?? '').toString()
+    .replace(/NOT[_ ]ENOUGH[_ ]INFO/gi, 'inconclusiva')
+    .replace(/SUPPORTS/gi, 'verdadeira')
+    .replace(/REFUTES/gi, 'falsa')
+    .replace(/sub-?alega(ç|c)(ões|ao|ão)/gi, 'afirmação')
+    .replace(/rodadas? de debate/gi, 'verificação')
+    .replace(/veredito( final)?/gi, 'conclusão')
+    .replace(/\bdebate\b/gi, 'análise');
+}
+function pct(x) { return Math.round((x ?? 0) * 100) + '%'; }
+
+async function verificar() {
+  const claim = document.getElementById('claim').value.trim();
+  const btn = document.getElementById('btn');
+  const status = document.getElementById('status');
+  const result = document.getElementById('result');
+  if (!claim) { status.innerHTML = '<span class="err">Escreva uma afirmação primeiro.</span>'; return; }
+
+  btn.disabled = true;
+  status.innerHTML = '<span class="spinner"></span> Analisando a afirmação...';
+  result.innerHTML = '';
+
+  try {
+    const resp = await fetch('/api/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ claim }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || 'Não foi possível analisar agora. Tente de novo.');
+    render(data);
+    status.textContent = '';
+  } catch (e) {
+    status.innerHTML = '<span class="err">' + esc(e.message) + '</span>';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+function render(data) {
+  const result = document.getElementById('result');
+  const v = vinfo(data.overall_label);
+
+  let points = '';
+  if (data.sub_claims && data.sub_claims.length > 1) {
+    points += '<p class="points-title">O que analisamos</p>';
+    data.sub_claims.forEach(sc => {
+      const sv = vinfo(sc.label);
+      points += '<div class="point">'
+        + '<div class="point-head"><span class="pdot ' + sv.cls + '"></span>'
+        + '<span class="point-text">' + esc(sc.text) + '</span>'
+        + '<span class="point-tag ' + sv.cls + '">' + sv.tag + '</span></div>'
+        + '<p class="point-why">' + esc(plain(sc.rationale)) + '</p>'
+        + '</div>';
+    });
+  } else if (data.sub_claims && data.sub_claims.length === 1) {
+    points += '<p class="points-title">Por quê</p>'
+      + '<p class="point-why" style="margin-left:0">' + esc(plain(data.sub_claims[0].rationale)) + '</p>';
+  }
+
+  const seen = new Set(); const links = [];
+  (data.sub_claims || []).forEach(sc => (sc.rounds || []).forEach(r => (r.evidence || []).forEach(ev => {
+    if (ev.source === 'web' && ev.url && !seen.has(ev.url)) { seen.add(ev.url); links.push(ev); }
+  })));
+  let sources = '';
+  if (links.length) {
+    sources += '<p class="sources-title">Fontes consultadas</p>';
+    links.slice(0, 6).forEach(ev => {
+      sources += '<a class="source-link" href="' + esc(ev.url) + '" target="_blank">'
+        + esc(ev.title || ev.url) + '</a>';
+    });
+  }
+
+  let html = '<div class="verdict ' + v.cls + '">';
+  html += '<div class="v-icon">' + v.icon + '</div>';
+  html += '<div class="v-word">' + v.word + '</div>';
+  html += '<p class="v-claim">"' + esc(data.claim) + '"</p>';
+  html += '<p class="v-explain">' + v.line + '</p>';
+  html += '<div class="certainty"><div class="certainty-label">Nível de certeza: ' + pct(data.overall_confidence) + '</div>'
+        + '<div class="bar"><div class="fill"></div></div></div>';
+
+  if (points || sources) {
+    html += '<details class="more"><summary>Ver detalhes da análise</summary>' + points + sources + '</details>';
+  }
+  html += '</div>';
+
+  result.innerHTML = html;
+  requestAnimationFrame(() => {
+    const fill = result.querySelector('.fill');
+    if (fill) fill.style.width = pct(data.overall_confidence);
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+ddgs==9.14.4
+numpy==2.4.6
+openai==2.43.0
+uvicorn==0.49.0
+pydantic==2.13.4
+fastapi==0.137.2
+aiosqlite==0.21.0
+python-dotenv==1.2.2
+pydantic-settings==2.14.1
+sentence-transformers==5.6.0
